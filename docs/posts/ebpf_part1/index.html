@@ -94,7 +94,7 @@ As a first step I used bpftrace to make the start easier. My script prints IPv4 
 eBPF capabilities can be used best for observability, networking and security use cases.
 My goal is to test the networking aspect of eBPF.</p>
 <p>As a first step I used <a href="https://github.com/iovisor/bpftrace">bpftrace</a> to make the start easier.
-<a href="https://github.com/Rasek91/Blog/tree/master/ebpf_part1/packets.bt">My script</a> prints IPv4 and IPv6 packets when received or sent.
+<a href="https://github.com/Rasek91/blog/tree/master/ebpf_part1/packets.bt">My script</a> prints IPv4 and IPv6 packets when received or sent.
 My intension is to develop more little programs and scripts around networking with eBPF and make them understand.
 If you want more details of the next post check out <a href="#next-steps">Next steps section</a>.</p>
 <h2 id="brief-introduction-of-ebpf">Brief introduction of eBPF</h2>
@@ -318,7 +318,7 @@ bpftrace can&rsquo;t show the arguments of a <em>kprobe</em> but a short googlin
 That&rsquo;s the reason why I choose to use the <em>tracepoints</em> to save the content of the actual message.</p>
 <h2 id="script-review">Script review</h2>
 <p>After the introduction of eBPF and explaining my decisions on designing this script I want to show you the actual code piece by piece and explain it in a more detailed way.
-You can download the script in raw format from <a href="https://raw.githubusercontent.com/Rasek91/Blog/master/ebpf_part1/packets.bt">here</a> or check the <a href="https://github.com/Rasek91/Blog/tree/master/ebpf_part1">repository</a>.</p>
+You can download the script in raw format from <a href="https://raw.githubusercontent.com/Rasek91/blog/master/ebpf_part1/packets.bt">here</a> or check the <a href="https://github.com/Rasek91/blog/tree/master/ebpf_part1">repository</a>.</p>
 <h3 id="setup-and-teardown">Setup and teardown</h3>
 <p>bpftrace has two special attach points: <strong>BEGIN</strong>, <strong>END</strong>.
 <strong>BEGIN</strong> is triggered before every other probes.

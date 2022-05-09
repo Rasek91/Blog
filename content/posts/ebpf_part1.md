@@ -10,7 +10,7 @@ eBPF capabilities can be used best for observability, networking and security us
 My goal is to test the networking aspect of eBPF.
 
 As a first step I used [bpftrace](https://github.com/iovisor/bpftrace) to make the start easier.
-[My script](https://github.com/Rasek91/Blog/tree/master/ebpf_part1/packets.bt) prints IPv4 and IPv6 packets when received or sent.
+[My script](https://github.com/Rasek91/blog/tree/master/ebpf_part1/packets.bt) prints IPv4 and IPv6 packets when received or sent.
 My intension is to develop more little programs and scripts around networking with eBPF and make them understand.
 If you want more details of the next post check out [Next steps section](#next-steps).
 
@@ -337,7 +337,7 @@ That's the reason why I choose to use the *tracepoints* to save the content of t
 ## Script review
 
 After the introduction of eBPF and explaining my decisions on designing this script I want to show you the actual code piece by piece and explain it in a more detailed way.
-You can download the script in raw format from [here](https://raw.githubusercontent.com/Rasek91/Blog/master/ebpf_part1/packets.bt) or check the [repository](https://github.com/Rasek91/Blog/tree/master/ebpf_part1).
+You can download the script in raw format from [here](https://raw.githubusercontent.com/Rasek91/blog/master/ebpf_part1/packets.bt) or check the [repository](https://github.com/Rasek91/blog/tree/master/ebpf_part1).
 
 ### Setup and teardown
 
