@@ -1,0 +1,420 @@
+#!/usr/bin/env bpftrace
+
+/*
+BPFTRACE script to print IPv4 and IPv6 packets.
+It prints the following details:
+- command, PID, UID
+- IP source and destination address
+- TCP or UDP source and destination port
+- first $BPFTRACE_STRLEN byte of the message in hex-formatted string
+
+Change the printed string length to the maximum:
+# BPFTRACE_STRLEN=200 ./packets.bt
+*/
+
+//import the libraries which contains the socket and I/O related structs
+#include <net/sock.h>
+#include <linux/socket.h>
+#include <linux/uio.h>
+
+//print description
+BEGIN
+{
+    printf("BPFTRACE script to show IPv4 and IPv6 packets.\nThe first argument is a filter for UID only if provided.\n");
+    printf("It use the following tracepoints and kprobes:\n- kprobe:sock_sendmsg, kprobe:sock_recvmsg\n");
+    printf("- tracepoint:syscalls:sys_enter_sendto, tracepoint:syscalls:sys_exit_sendto\n- tracepoint:syscalls:sys_enter_recvfrom, tracepoint:syscalls:sys_exit_recvfrom\n");
+    printf("- tracepoint:syscalls:sys_enter_sendmsg, tracepoint:syscalls:sys_exit_sendmsg\n- tracepoint:syscalls:sys_enter_recvmsg, tracepoint:syscalls:sys_exit_recvmsg\n");
+    printf("- tracepoint:syscalls:sys_enter_sendmmsg tracepoint:syscalls:sys_exit_sendmmsg\n- tracepoint:syscalls:sys_enter_recvmmsg, tracepoint:syscalls:sys_exit_recvmmsg\n");
+    printf("- tracepoint:syscalls:sys_enter_write tracepoint:syscalls:sys_exit_write\n- tracepoint:syscalls:sys_enter_read, tracepoint:syscalls:sys_exit_read\n");
+
+    if($# == 0)
+    {
+        printf("There is no UID filter.\n");
+    }
+    else
+    {
+        printf("There is UID filter for %d user.\n", $1);
+    }
+}
+
+//sock_* kprobe are used to get the details of the socket
+//filter for UID only if provided
+//function: int sock_sendmsg(struct socket *sock, struct msghdr *msg)
+//function: int sock_recvmsg(struct socket *sock, struct msghdr *msg, int flags)
+kprobe:sock_sendmsg,kprobe:sock_recvmsg /uid == $1 || $# == 0/
+{
+    //first argument is used to save the socket's details
+    $socket = (struct socket *)arg0;
+    @ip_version[pid] = $socket->sk->__sk_common.skc_family;
+
+    //using different maps to save the IP addresses
+    if(@ip_version[pid] == AF_INET)
+    {
+        @src_ipv4[pid] = $socket->sk->__sk_common.skc_rcv_saddr;
+        @dst_ipv4[pid] = $socket->sk->__sk_common.skc_daddr;
+    }
+    else if(@ip_version[pid] == AF_INET6)
+    {
+        @src_ipv6[pid] = $socket->sk->__sk_common.skc_v6_rcv_saddr.in6_u.u6_addr8;
+        @dst_ipv6[pid] = $socket->sk->__sk_common.skc_v6_daddr.in6_u.u6_addr8;
+    }
+
+    @l4_type[pid] = $socket->sk->sk_type;
+    $dstport = $socket->sk->__sk_common.skc_dport;
+    @src_port[pid] = $socket->sk->__sk_common.skc_num;
+    //big endian to little endian transformation
+    @dst_port[pid] = ($dstport >> 8) | (($dstport << 8) & 0xff00);
+}
+
+//this enter tracepoint is used to save the location of the message buffer
+//filter for UID only if provided
+//check the available variables: # bpftrace -lv 'tracepoint:syscalls:sys_enter_sendto'
+tracepoint:syscalls:sys_enter_sendto /uid == $1 || $# == 0/
+{
+    @send[pid] = args->buff;
+}
+
+//this exit tracepoint is used to print the details of the message
+//the content of the message copied to the buffer during the function call, so the data is only available at exit tracepoint
+//filter for UID only if provided and filter for IP packets
+tracepoint:syscalls:sys_exit_sendto /(uid == $1 || $# == 0) && (@ip_version[pid] == AF_INET || @ip_version[pid] == AF_INET6)/
+{
+    printf("SEND with sendto\ncommand: %s, PID: %d, UID: %d\n", comm, pid, uid);
+
+    if(@ip_version[pid] == AF_INET)
+    {
+        printf("source IPv4: %s, destination IPv4: %s\n", ntop(AF_INET, @src_ipv4[pid]), ntop(AF_INET, @dst_ipv4[pid]));
+    }
+    else if(@ip_version[pid] == AF_INET6)
+    {
+        printf("source IPv6: %s, destination IPv6: %s\n", ntop(AF_INET6, @src_ipv6[pid]), ntop(AF_INET6, @dst_ipv6[pid]));
+    }
+
+    printf("%s source port: %d, destination port: %d\n", @l4_type[pid] == SOCK_STREAM ? "TCP" : "UDP", @src_port[pid], @dst_port[pid]);
+    printf("message:\n%r\n", buf(@send[pid], args->ret <= 200 ? args->ret : 200));
+    printf("=====================================\n");
+    //delete the already used values from the map
+    delete(@ip_version[pid]);
+    delete(@src_ipv4[pid]);
+    delete(@dst_ipv4[pid]);
+    delete(@src_ipv6[pid]);
+    delete(@dst_ipv6[pid]);
+    delete(@l4_type[pid]);
+    delete(@src_port[pid]);
+    delete(@dst_port[pid]);
+    delete(@send[pid]);
+    delete(@recv[pid]);
+    delete(@msend[pid]);
+    delete(@mrecv[pid]);
+}
+
+//this enter tracepoint is used to save the location of the message buffer
+//filter for UID only if provided
+//check the available variables: # bpftrace -lv 'tracepoint:syscalls:sys_enter_recvfrom'
+tracepoint:syscalls:sys_enter_recvfrom /uid == $1 || $# == 0/
+{
+    @recv[pid] = args->ubuf;
+}
+
+//this exit tracepoint is used to print the details of the message
+//the content of the message copied to the buffer during the function call, so the data is only available at exit tracepoint
+//filter for UID only if provided and filter for IP packets
+tracepoint:syscalls:sys_exit_recvfrom /(uid == $1 || $# == 0) && (@ip_version[pid] == AF_INET || @ip_version[pid] == AF_INET6)/
+{
+    printf("RECEIVE with recvfrom\ncommand: %s, PID: %d, UID: %d\n", comm, pid, uid);
+
+    if(@ip_version[pid] == AF_INET)
+    {
+        printf("source IPv4: %s, destination IPv4: %s\n", ntop(AF_INET, @src_ipv4[pid]), ntop(AF_INET, @dst_ipv4[pid]));
+    }
+    else if(@ip_version[pid] == AF_INET6)
+    {
+        printf("source IPv6: %s, destination IPv6: %s\n", ntop(AF_INET6, @src_ipv6[pid]), ntop(AF_INET6, @dst_ipv6[pid]));
+    }
+
+    printf("%s source port: %d, destination port: %d\n", @l4_type[pid] == SOCK_STREAM ? "TCP" : "UDP", @src_port[pid], @dst_port[pid]);
+    printf("message:\n%r\n", buf(@recv[pid], args->ret <= 200 ? args->ret : 200));
+    printf("=====================================\n");
+    //delete the already used values from the map
+    delete(@ip_version[pid]);
+    delete(@src_ipv4[pid]);
+    delete(@dst_ipv4[pid]);
+    delete(@src_ipv6[pid]);
+    delete(@dst_ipv6[pid]);
+    delete(@l4_type[pid]);
+    delete(@src_port[pid]);
+    delete(@dst_port[pid]);
+    delete(@send[pid]);
+    delete(@recv[pid]);
+    delete(@msend[pid]);
+    delete(@mrecv[pid]);
+}
+
+//this enter tracepoint is used to save the location of the message buffer
+//filter for UID only if provided
+//check the available variables: # bpftrace -lv 'tracepoint:syscalls:sys_enter_sendmsg'
+tracepoint:syscalls:sys_enter_sendmsg /uid == $1 || $# == 0/
+{
+    @send[pid] = args->msg;
+}
+
+//this exit tracepoint is used to print the details of the message
+//the content of the message copied to the buffer during the function call, so the data is only available at exit tracepoint
+//filter for UID only if provided and filter for IP packets
+tracepoint:syscalls:sys_exit_sendmsg /(uid == $1 || $# == 0) && (@ip_version[pid] == AF_INET || @ip_version[pid] == AF_INET6)/
+{
+    printf("SEND with sendmsg\ncommand: %s, PID: %d, UID: %d\n", comm, pid, uid);
+
+    if(@ip_version[pid] == AF_INET)
+    {
+        printf("source IPv4: %s, destination IPv4: %s\n", ntop(AF_INET, @src_ipv4[pid]), ntop(AF_INET, @dst_ipv4[pid]));
+    }
+    else if(@ip_version[pid] == AF_INET6)
+    {
+        printf("source IPv6: %s, destination IPv6: %s\n", ntop(AF_INET6, @src_ipv6[pid]), ntop(AF_INET6, @dst_ipv6[pid]));
+    }
+
+    printf("%s source port: %d, destination port: %d\n", @l4_type[pid] == SOCK_STREAM ? "TCP" : "UDP", @src_port[pid], @dst_port[pid]);
+    printf("message:\n%r\n", buf(@send[pid]->msg_iov->iov_base, args->ret <= 200 ? args->ret : 200));
+    printf("=====================================\n");
+    //delete the already used values from the map
+    delete(@ip_version[pid]);
+    delete(@src_ipv4[pid]);
+    delete(@dst_ipv4[pid]);
+    delete(@src_ipv6[pid]);
+    delete(@dst_ipv6[pid]);
+    delete(@l4_type[pid]);
+    delete(@src_port[pid]);
+    delete(@dst_port[pid]);
+    delete(@send[pid]);
+    delete(@recv[pid]);
+    delete(@msend[pid]);
+    delete(@mrecv[pid]);
+}
+
+//this enter tracepoint is used to save the location of the message buffer
+//filter for UID only if provided
+//check the available variables: # bpftrace -lv 'tracepoint:syscalls:sys_enter_recvmsg'
+tracepoint:syscalls:sys_enter_recvmsg /uid == $1 || $# == 0/
+{
+    @recv[pid] = args->msg;
+}
+
+//this exit tracepoint is used to print the details of the message
+//the content of the message copied to the buffer during the function call, so the data is only available at exit tracepoint
+//filter for UID only if provided and filter for IP packets
+tracepoint:syscalls:sys_exit_recvmsg /(uid == $1 || $# == 0) && (@ip_version[pid] == AF_INET || @ip_version[pid] == AF_INET6)/
+{
+    printf("RECEIVE with recvmsg\ncommand: %s, PID: %d, UID: %d\n", comm, pid, uid);
+
+    if(@ip_version[pid] == AF_INET)
+    {
+        printf("source IPv4: %s, destination IPv4: %s\n", ntop(AF_INET, @src_ipv4[pid]), ntop(AF_INET, @dst_ipv4[pid]));
+    }
+    else if(@ip_version[pid] == AF_INET6)
+    {
+        printf("source IPv6: %s, destination IPv6: %s\n", ntop(AF_INET6, @src_ipv6[pid]), ntop(AF_INET6, @dst_ipv6[pid]));
+    }
+
+    printf("%s source port: %d, destination port: %d\n", @l4_type[pid] == SOCK_STREAM ? "TCP" : "UDP", @src_port[pid], @dst_port[pid]);
+    printf("message:\n%r\n", buf(@recv[pid]->msg_iov->iov_base, args->ret <= 200 ? args->ret : 200));
+    printf("=====================================\n");
+    //delete the already used values from the map
+    delete(@ip_version[pid]);
+    delete(@src_ipv4[pid]);
+    delete(@dst_ipv4[pid]);
+    delete(@src_ipv6[pid]);
+    delete(@dst_ipv6[pid]);
+    delete(@l4_type[pid]);
+    delete(@src_port[pid]);
+    delete(@dst_port[pid]);
+    delete(@send[pid]);
+    delete(@recv[pid]);
+    delete(@msend[pid]);
+    delete(@mrecv[pid]);
+}
+
+//this enter tracepoint is used to save the location of the message buffer
+//filter for UID only if provided
+//check the available variables: # bpftrace -lv 'tracepoint:syscalls:sys_enter_sendmmsg'
+tracepoint:syscalls:sys_enter_sendmmsg /uid == $1 || $# == 0/
+{
+    @msend[pid] = args->mmsg;
+}
+
+//this exit tracepoint is used to print the details of the message
+//the content of the message copied to the buffer during the function call, so the data is only available at exit tracepoint
+//filter for UID only if provided and filter for IP packets
+tracepoint:syscalls:sys_exit_sendmmsg /(uid == $1 || $# == 0) && (@ip_version[pid] == AF_INET || @ip_version[pid] == AF_INET6)/
+{
+    printf("SEND with sendmmsg\ncommand: %s, PID: %d, UID: %d\n", comm, pid, uid);
+
+    if(@ip_version[pid] == AF_INET)
+    {
+        printf("source IPv4: %s, destination IPv4: %s\n", ntop(AF_INET, @src_ipv4[pid]), ntop(AF_INET, @dst_ipv4[pid]));
+    }
+    else if(@ip_version[pid] == AF_INET6)
+    {
+        printf("source IPv6: %s, destination IPv6: %s\n", ntop(AF_INET6, @src_ipv6[pid]), ntop(AF_INET6, @dst_ipv6[pid]));
+    }
+
+    printf("%s source port: %d, destination port: %d\n", @l4_type[pid] == SOCK_STREAM ? "TCP" : "UDP", @src_port[pid], @dst_port[pid]);
+    printf("message:\n%r\n", buf(@msend[pid]->msg_hdr.msg_iov->iov_base, @msend[pid]->msg_hdr.msg_iov->iov_len <= 200 ? @msend[pid]->msg_hdr.msg_iov->iov_len : 200));
+    printf("=====================================\n");
+    //delete the already used values from the map
+    delete(@ip_version[pid]);
+    delete(@src_ipv4[pid]);
+    delete(@dst_ipv4[pid]);
+    delete(@src_ipv6[pid]);
+    delete(@dst_ipv6[pid]);
+    delete(@l4_type[pid]);
+    delete(@src_port[pid]);
+    delete(@dst_port[pid]);
+    delete(@send[pid]);
+    delete(@recv[pid]);
+    delete(@msend[pid]);
+    delete(@mrecv[pid]);
+}
+
+//this enter tracepoint is used to save the location of the message buffer
+//filter for UID only if provided
+//check the available variables: # bpftrace -lv 'tracepoint:syscalls:sys_enter_recvmmsg'
+tracepoint:syscalls:sys_enter_recvmmsg /uid == $1 || $# == 0/
+{
+    @mrecv[pid] = args->mmsg;
+}
+
+//this exit tracepoint is used to print the details of the message
+//the content of the message copied to the buffer during the function call, so the data is only available at exit tracepoint
+//filter for UID only if provided and filter for IP packets
+tracepoint:syscalls:sys_exit_recvmmsg /(uid == $1 || $# == 0) && (@ip_version[pid] == AF_INET || @ip_version[pid] == AF_INET6)/
+{
+    printf("RECEIVE with recvmmsg\ncommand: %s, PID: %d, UID: %d\n", comm, pid, uid);
+
+    if(@ip_version[pid] == AF_INET)
+    {
+        printf("source IPv4: %s, destination IPv4: %s\n", ntop(AF_INET, @src_ipv4[pid]), ntop(AF_INET, @dst_ipv4[pid]));
+    }
+    else if(@ip_version[pid] == AF_INET6)
+    {
+        printf("source IPv6: %s, destination IPv6: %s\n", ntop(AF_INET6, @src_ipv6[pid]), ntop(AF_INET6, @dst_ipv6[pid]));
+    }
+
+    printf("%s source port: %d, destination port: %d\n", @l4_type[pid] == SOCK_STREAM ? "TCP" : "UDP", @src_port[pid], @dst_port[pid]);
+    printf("message:\n%r\n", buf(@mrecv[pid]->msg_hdr.msg_iov->iov_base, @mrecv[pid]->msg_hdr.msg_iov->iov_len <= 200 ? @mrecv[pid]->msg_hdr.msg_iov->iov_len : 200));
+    printf("=====================================\n");
+    //delete the already used values from the map
+    delete(@ip_version[pid]);
+    delete(@src_ipv4[pid]);
+    delete(@dst_ipv4[pid]);
+    delete(@src_ipv6[pid]);
+    delete(@dst_ipv6[pid]);
+    delete(@l4_type[pid]);
+    delete(@src_port[pid]);
+    delete(@dst_port[pid]);
+    delete(@send[pid]);
+    delete(@recv[pid]);
+    delete(@msend[pid]);
+    delete(@mrecv[pid]);
+}
+
+//this enter tracepoint is used to save the location of the message buffer
+//filter for UID only if provided
+//check the available variables: # bpftrace -lv 'tracepoint:syscalls:sys_enter_write'
+tracepoint:syscalls:sys_enter_write /uid == $1 || $# == 0/
+{
+    @send[pid] = args->buf;
+}
+
+//this exit tracepoint is used to print the details of the message
+//the content of the message copied to the buffer during the function call, so the data is only available at exit tracepoint
+//filter for UID only if provided and filter for IP packets
+tracepoint:syscalls:sys_exit_write /(uid == $1 || $# == 0) && (@ip_version[pid] == AF_INET || @ip_version[pid] == AF_INET6)/
+{
+    printf("SEND with write\ncommand: %s, PID: %d, UID: %d\n", comm, pid, uid);
+
+    if(@ip_version[pid] == AF_INET)
+    {
+        printf("source IPv4: %s, destination IPv4: %s\n", ntop(AF_INET, @src_ipv4[pid]), ntop(AF_INET, @dst_ipv4[pid]));
+    }
+    else if(@ip_version[pid] == AF_INET6)
+    {
+        printf("source IPv6: %s, destination IPv6: %s\n", ntop(AF_INET6, @src_ipv6[pid]), ntop(AF_INET6, @dst_ipv6[pid]));
+    }
+
+    printf("%s source port: %d, destination port: %d\n", @l4_type[pid] == SOCK_STREAM ? "TCP" : "UDP", @src_port[pid], @dst_port[pid]);
+    printf("message:\n%r\n", buf(@send[pid], args->ret <= 200 ? args->ret : 200));
+    printf("=====================================\n");
+    //delete the already used values from the map
+    delete(@ip_version[pid]);
+    delete(@src_ipv4[pid]);
+    delete(@dst_ipv4[pid]);
+    delete(@src_ipv6[pid]);
+    delete(@dst_ipv6[pid]);
+    delete(@l4_type[pid]);
+    delete(@src_port[pid]);
+    delete(@dst_port[pid]);
+    delete(@send[pid]);
+    delete(@recv[pid]);
+    delete(@msend[pid]);
+    delete(@mrecv[pid]);
+}
+
+//this enter tracepoint is used to save the location of the message buffer
+//filter for UID only if provided
+//check the available variables: # bpftrace -lv 'tracepoint:syscalls:sys_enter_read'
+tracepoint:syscalls:sys_enter_read /uid == $1 || $# == 0/
+{
+    @recv[pid] = args->buf;
+}
+
+//this exit tracepoint is used to print the details of the message
+//the content of the message copied to the buffer during the function call, so the data is only available at exit tracepoint
+//filter for UID only if provided and filter for IP packets
+tracepoint:syscalls:sys_exit_read /(uid == $1 || $# == 0) && (@ip_version[pid] == AF_INET || @ip_version[pid] == AF_INET6)/
+{
+    printf("RECEIVE with read\ncommand: %s, PID: %d, UID: %d\n", comm, pid, uid);
+
+    if(@ip_version[pid] == AF_INET)
+    {
+        printf("source IPv4: %s, destination IPv4: %s\n", ntop(AF_INET, @src_ipv4[pid]), ntop(AF_INET, @dst_ipv4[pid]));
+    }
+    else if(@ip_version[pid] == AF_INET6)
+    {
+        printf("source IPv6: %s, destination IPv6: %s\n", ntop(AF_INET6, @src_ipv6[pid]), ntop(AF_INET6, @dst_ipv6[pid]));
+    }
+
+    printf("%s source port: %d, destination port: %d\n", @l4_type[pid] == SOCK_STREAM ? "TCP" : "UDP", @src_port[pid], @dst_port[pid]);
+    printf("message:\n%r\n", buf(@recv[pid], args->ret <= 200 ? args->ret : 200));
+    printf("=====================================\n");
+    //delete the already used values from the map
+    delete(@ip_version[pid]);
+    delete(@src_ipv4[pid]);
+    delete(@dst_ipv4[pid]);
+    delete(@src_ipv6[pid]);
+    delete(@dst_ipv6[pid]);
+    delete(@l4_type[pid]);
+    delete(@src_port[pid]);
+    delete(@dst_port[pid]);
+    delete(@send[pid]);
+    delete(@recv[pid]);
+    delete(@msend[pid]);
+    delete(@mrecv[pid]);
+}
+
+//delete all of the maps
+END
+{
+    clear(@ip_version);
+    clear(@src_ipv4);
+    clear(@dst_ipv4);
+    clear(@src_ipv6);
+    clear(@dst_ipv6);
+    clear(@l4_type);
+    clear(@src_port);
+    clear(@dst_port);
+    clear(@send);
+    clear(@recv);
+    clear(@msend);
+    clear(@mrecv);
+}
