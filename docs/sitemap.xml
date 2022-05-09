@@ -2,24 +2,24 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
-    <loc>https://rasek91.github.io/Blog/tags/ebpf/</loc>
+    <loc>https://rasek91.github.io/blog/tags/ebpf/</loc>
     <lastmod>2022-05-03T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>https://rasek91.github.io/Blog/posts/ebpf_part1/</loc>
+    <loc>https://rasek91.github.io/blog/posts/ebpf_part1/</loc>
     <lastmod>2022-05-03T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>https://rasek91.github.io/Blog/tags/networking/</loc>
+    <loc>https://rasek91.github.io/blog/tags/networking/</loc>
     <lastmod>2022-05-03T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>https://rasek91.github.io/Blog/posts/</loc>
+    <loc>https://rasek91.github.io/blog/posts/</loc>
     <lastmod>2022-05-03T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>https://rasek91.github.io/Blog/</loc>
+    <loc>https://rasek91.github.io/blog/</loc>
     <lastmod>2022-05-03T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>https://rasek91.github.io/Blog/tags/</loc>
+    <loc>https://rasek91.github.io/blog/tags/</loc>
     <lastmod>2022-05-03T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>https://rasek91.github.io/Blog/categories/</loc>
+    <loc>https://rasek91.github.io/blog/categories/</loc>
   </url>
 </urlset>

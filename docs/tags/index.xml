@@ -2,26 +2,26 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>Tags on Rasek91&#39;s Blog</title>
-    <link>https://rasek91.github.io/Blog/tags/</link>
+    <link>https://rasek91.github.io/blog/tags/</link>
     <description>Recent content in Tags on Rasek91&#39;s Blog</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Tue, 03 May 2022 00:00:00 +0000</lastBuildDate><atom:link href="https://rasek91.github.io/Blog/tags/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Tue, 03 May 2022 00:00:00 +0000</lastBuildDate><atom:link href="https://rasek91.github.io/blog/tags/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>ebpf</title>
-      <link>https://rasek91.github.io/Blog/tags/ebpf/</link>
+      <link>https://rasek91.github.io/blog/tags/ebpf/</link>
       <pubDate>Tue, 03 May 2022 00:00:00 +0000</pubDate>
       
-      <guid>https://rasek91.github.io/Blog/tags/ebpf/</guid>
+      <guid>https://rasek91.github.io/blog/tags/ebpf/</guid>
       <description></description>
     </item>
     
     <item>
       <title>networking</title>
-      <link>https://rasek91.github.io/Blog/tags/networking/</link>
+      <link>https://rasek91.github.io/blog/tags/networking/</link>
       <pubDate>Tue, 03 May 2022 00:00:00 +0000</pubDate>
       
-      <guid>https://rasek91.github.io/Blog/tags/networking/</guid>
+      <guid>https://rasek91.github.io/blog/tags/networking/</guid>
       <description></description>
     </item>
     
