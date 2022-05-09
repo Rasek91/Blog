@@ -1,4 +1,9 @@
-# My eBPF journey part 1: Using bpftrace to print packets
++++
+author = "Márton Rasek"
+title = "My eBPF journey part 1: Using bpftrace to print packets"
+tags = ["ebpf", "networking"]
+date = "2022-05-03"
++++
 
 As many of you probably know eBPF is a great technology which allows you to run code inside the Linux kernel.
 eBPF capabilities can be used best for observability, networking and security use cases.
@@ -419,27 +424,27 @@ I record some examples:
 
 ### curl
 
-![curl](./images/curl.gif)
+![curl](curl.gif)
 
 ### nc using TCP
 
-![nc_tcp](./images/nc_tcp.gif)
+![nc_tcp](nc_tcp.gif)
 
 ### curl TLS
 
-![curl_tls](./images/curl_tls.gif)
+![curl_tls](curl_tls.gif)
 
 ### nslookup
 
-![nslookup](./images/nslookup.gif)
+![nslookup](nslookup.gif)
 
 ### nc using UDP
 
-![nc_udp](./images/nc_udp.gif)
+![nc_udp](nc_udp.gif)
 
 ### Pion DTLS
 
-![dtls](./images/dtls.gif)
+![dtls](dtls.gif)
 
 ## Next steps
 

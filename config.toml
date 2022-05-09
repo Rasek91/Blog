@@ -1,0 +1,35 @@
+baseURL = "https://rasek91.github.io/Blog/"
+languageCode = "en-us"
+title = "Rasek91's Blog"
+theme = "m10c"
+
+[menu]
+  [[menu.main]]
+    identifier = "home"
+    name = "Home"
+    url = "/"
+    weight = 1
+  [[menu.main]]
+    identifier = "tags"
+    name = "Tags"
+    url = "/tags/"
+    weight = 2
+
+[params]
+  author = "Márton Rasek"
+  description = "Senior Software Engineer"
+  menu_item_separator = " - "
+  [[params.social]]
+    icon = "github"
+    name = "Github"
+    url = "https://github.com/Rasek91/"
+  [[params.social]]
+    icon = "linkedin"
+    name = "LinkedIn"
+    url = "https://www.linkedin.com/in/m%C3%A1rton-rasek-4ab9aaba/"
+  [params.style]
+    darkestColor = "#030e1e"
+    darkColor = "#303030"
+    lightColor = "#c5d4e3"
+    lightestColor = "#ffffff"
+    primaryColor = "#57cc8a"
