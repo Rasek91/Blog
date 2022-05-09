@@ -2,6 +2,7 @@ baseURL = "https://rasek91.github.io/Blog/"
 languageCode = "en-us"
 title = "Rasek91's Blog"
 theme = "m10c"
+publishDir = "docs"
 
 [menu]
   [[menu.main]]

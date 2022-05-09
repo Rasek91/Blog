@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Posts on Rasek91&#39;s Blog</title>
+    <link>https://rasek91.github.io/Blog/posts/</link>
+    <description>Recent content in Posts on Rasek91&#39;s Blog</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Tue, 03 May 2022 00:00:00 +0000</lastBuildDate><atom:link href="https://rasek91.github.io/Blog/posts/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>My eBPF journey part 1: Using bpftrace to print packets</title>
+      <link>https://rasek91.github.io/Blog/posts/ebpf_part1/</link>
+      <pubDate>Tue, 03 May 2022 00:00:00 +0000</pubDate>
+      
+      <guid>https://rasek91.github.io/Blog/posts/ebpf_part1/</guid>
+      <description>As many of you probably know eBPF is a great technology which allows you to run code inside the Linux kernel. eBPF capabilities can be used best for observability, networking and security use cases. My goal is to test the networking aspect of eBPF.
+As a first step I used bpftrace to make the start easier. My script prints IPv4 and IPv6 packets when received or sent. My intension is to develop more little programs and scripts around networking with eBPF and make them understand.</description>
+    </item>
+    
+  </channel>
+</rss>
