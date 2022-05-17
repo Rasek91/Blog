@@ -13,7 +13,7 @@ If you want more details of the next post check out [Next steps section](#next-s
 
 If you want more detailed description of eBPF I recommend you to check the following links: [ebpf.io](https://ebpf.io/) and [cilium bpf guide](https://docs.cilium.io/en/latest/bpf/#bpf-guide).
 
-Based on a very simple definition eBPF allows you to run code inside the Linux kernel in a save way without developing a kernel module.
+Based on a very simple definition eBPF allows you to run code inside the Linux kernel in a safe way without developing a kernel module.
 eBPF programs are byte codes run as a virtual machine inside the kernel.
 The code itself has been verified by the loader before running it to prevent crash inside the kernel.
 Besides the advantage of the safety, eBPF programs compiled with Just-In-Time (JIT) compiler to run as efficient as possible.
